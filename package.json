@@ -1,0 +1,48 @@
+{
+  "name": "card-drag-sort",
+  "private": false,
+  "version": "0.0.4",
+  "author": "dujiashun",
+  "description": "Vue3卡片拖拽排序组件",
+  "keywords": [
+    "vue",
+    "card",
+    "darg",
+    "cardDarg",
+    "sort",
+    "ui"
+  ],
+  "type": "module",
+  "license": "ISC",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/card-drag-sort.umd.cjs",
+  "module": "./dist/card-drag-sort.js",
+  "exports": {
+    ".": {
+      "import": "./dist/card-drag-sort.js",
+      "require": "./dist/card-drag-sort.umd.cjs"
+    }
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "terser": "^5.30.4",
+    "vite-plugin-dts": "^3.9.0",
+    "vue": "^3.4.21"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "@vitejs/plugin-vue": "^5.0.4",
+    "@vitejs/plugin-vue-jsx": "^3.1.0",
+    "sass": "^1.75.0",
+    "typescript": "^5.2.2",
+    "vite": "^5.2.0",
+    "vite-plugin-libcss": "^1.1.1",
+    "vue-tsc": "^2.0.6"
+  }
+}
