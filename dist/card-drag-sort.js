@@ -1,6 +1,6 @@
 import './index.css';
-import { defineComponent, useCssVars, computed, ref, openBlock, createElementBlock, Fragment, renderList, normalizeStyle, createElementVNode, renderSlot, toDisplayString, pushScopeId, popScopeId } from "vue";
-const _withScopeId = (n) => (pushScopeId("data-v-2dc448db"), n = n(), popScopeId(), n);
+import { defineComponent, useCssVars, computed, ref, watch, openBlock, createElementBlock, Fragment, renderList, normalizeStyle, createElementVNode, renderSlot, toDisplayString, nextTick, pushScopeId, popScopeId } from "vue";
+const _withScopeId = (n) => (pushScopeId("data-v-af7b0379"), n = n(), popScopeId(), n);
 const _hoisted_1 = ["id", "tabIndex"];
 const _hoisted_2 = ["onMousedown"];
 const _hoisted_3 = { class: "card-title" };
@@ -16,13 +16,20 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
     columnSpace: { type: Number, default: 20 },
     rowSpace: { type: Number, default: 20 }
   },
-  setup(__props) {
+  emits: ["dragStart", "dragStop"],
+  setup(__props, { emit: __emit }) {
     useCssVars((_ctx) => ({
-      "29504f0d": containerHeight.value
+      "22f48cc6": containerHeight.value
     }));
+    const emit = __emit;
     const props = __props;
+    const dataList = computed(() => {
+      return props.data.map((item, index) => {
+        return { index, ...item };
+      });
+    });
     const containerHeight = computed(() => {
-      const num = props.data.length;
+      const num = dataList.value.length;
       return Math.ceil(num / props.columns - 1) * (props.height + props.rowSpace) + props.height + "px";
     });
     function cardPositionTop(index) {
@@ -43,11 +50,12 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
     let scrollLength = 0;
     let throttleFn;
     function dragStart(e, id) {
+      emit("dragStart", id);
       const card = document.getElementById(id);
       if (!card)
         return;
       dragDom = card;
-      dragDomData = props.data.find((item) => {
+      dragDomData = dataList.value.find((item) => {
         return item.id === id;
       });
       domStartY = parseInt(dragDom.style.top);
@@ -78,19 +86,22 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
         const relativeY = domY - parseInt(item.style.top);
         const relativeX = domX - parseInt(item.style.left);
         if (Math.abs(relativeY) < props.height / 2 && Math.abs(relativeX) < props.width / 2 && dragDomData && item.id !== dragDomData.id) {
-          const coveredData = props.data.find((dataItem) => {
-            return item.tabIndex === dataItem.index;
+          const coveredData = dataList.value.find((dataItem) => {
+            return item.id === dataItem.id;
           });
           if (!coveredData || coveredData.id === dragDomData.id)
             return;
+          const newIndex = coveredData.index;
           const bigSmall = dragDomData.index > coveredData.index;
           if (bigSmall) {
-            let transitionDataList = props.data.filter((item2) => {
-              return item2.index >= coveredData.index && item2.index < dragDomData.index;
+            let transitionDataList = dataList.value.filter((item2) => {
+              if (item2.index >= coveredData.index && item2.index < dragDomData.index) {
+                item2.index += 1;
+                return item2;
+              }
             });
-            dragDomData.index = coveredData.index;
+            dragDomData.index = newIndex;
             for (const tranItem of transitionDataList) {
-              tranItem.index = tranItem.index + 1;
               const el = document.getElementById(tranItem.id);
               if (el) {
                 el.style.top = cardPositionTop(tranItem.index);
@@ -99,12 +110,14 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
             }
           }
           if (!bigSmall) {
-            let transitionDataList = props.data.filter((item2) => {
-              return item2.index <= coveredData.index && item2.index > dragDomData.index;
+            let transitionDataList = dataList.value.filter((item2) => {
+              if (item2.index <= coveredData.index && item2.index > dragDomData.index) {
+                item2.index -= 1;
+                return item2;
+              }
             });
-            dragDomData.index = coveredData.index;
+            dragDomData.index = newIndex;
             for (const tranItem of transitionDataList) {
-              tranItem.index = tranItem.index - 1;
               const el = document.getElementById(tranItem.id);
               if (el) {
                 el.style.top = cardPositionTop(tranItem.index);
@@ -116,6 +129,7 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
       }
     }
     function dragStop() {
+      emit("dragStop");
       document.removeEventListener("mousemove", dragMove);
       document.removeEventListener("mouseup", dragStop);
       document.removeEventListener("scroll", scroll);
@@ -125,18 +139,38 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
       dragDom.style.zIndex = "0";
       dragDom.style.top = cardPositionTop(dragDomData.index);
       dragDom.style.left = cardPositionLeft(dragDomData.index);
+      addCardStyle();
     }
     function scroll() {
       scrollLength = document.documentElement.scrollTop - scrollStart;
       dragDom.style.top = moveY + scrollLength + "px";
     }
+    function addCardStyle() {
+      nextTick(() => {
+        console.log(dataList.value);
+        dataList.value.forEach((item) => {
+          const el = document.getElementById(item.id);
+          if (el) {
+            el.style.top = cardPositionTop(item.index);
+            el.style.left = cardPositionLeft(item.index);
+          }
+        });
+      });
+    }
+    watch(
+      dataList,
+      () => {
+        addCardStyle();
+      },
+      { immediate: true }
+    );
     return (_ctx, _cache) => {
       return openBlock(), createElementBlock("div", {
         class: "card-drag-sort",
         ref_key: "cardDrag",
         ref: cardDrag
       }, [
-        (openBlock(true), createElementBlock(Fragment, null, renderList(__props.data, (item) => {
+        (openBlock(true), createElementBlock(Fragment, null, renderList(dataList.value, (item) => {
           return openBlock(), createElementBlock("div", {
             class: "card-wrap",
             key: item.id,
@@ -154,7 +188,7 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
               onMousedown: ($event) => dragStart($event, item.id)
             }, [
               renderSlot(_ctx.$slots, "header", { item }, () => [
-                createElementVNode("div", _hoisted_3, toDisplayString(item.title || "暂无标题"), 1)
+                createElementVNode("div", _hoisted_3, toDisplayString(item.title || "无标题"), 1)
               ], true)
             ], 40, _hoisted_2),
             renderSlot(_ctx.$slots, "content", { item }, () => [
@@ -173,7 +207,7 @@ const _export_sfc = (sfc, props) => {
   }
   return target;
 };
-const CardDragSort = /* @__PURE__ */ _export_sfc(_sfc_main, [["__scopeId", "data-v-2dc448db"]]);
+const CardDragSort = /* @__PURE__ */ _export_sfc(_sfc_main, [["__scopeId", "data-v-af7b0379"]]);
 const components = [CardDragSort];
 const install = (app) => {
   components.forEach((component) => {

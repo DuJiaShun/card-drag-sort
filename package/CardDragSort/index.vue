@@ -27,7 +27,6 @@
 
 <script lang="ts" setup>
 defineOptions({ name: 'CardDragSort' })
-import { isTypeNode } from 'typescript'
 import { PropType, computed, ref, nextTick, watch } from 'vue'
 
 const emit = defineEmits(['dragStart', 'dragStop'])

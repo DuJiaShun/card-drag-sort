@@ -5,8 +5,8 @@
 </template>
 <script setup lang="ts">
 import { reactive } from 'vue'
-// import { CardDragSort } from '../dist/card-drag-sort.js'
-import { CardDragSort } from '../package/index'
+import { CardDragSort } from '../dist/card-drag-sort.js'
+// import { CardDragSort } from '../package/index'
 const data = reactive([
   { title: '', id: 'one' },
   { title: '卡片标题2', id: 'two' },
