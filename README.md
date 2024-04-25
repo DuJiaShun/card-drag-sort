@@ -37,7 +37,6 @@ import { CardDragSort } from 'card-drag-sort'
 | 属性  | 说明                    | 类型   | 是否必填 | 默认值 |
 | ----- | ----------------------- | ------ | -------- | ------ |
 | id    | 卡片的唯一标识          | String | Y        | -      |
-| index | 卡片序号，从 0 开始递增 | Number | Y        | -      |
 | title | 卡片的标题              | String | N        | 无标题 |
 
 ## 插槽
