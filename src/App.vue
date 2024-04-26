@@ -23,6 +23,6 @@ const data = reactive([
 ])
 
 function dragStop(e) {
-  console.log(e, 111)
+  console.log(e)
 }
 </script>

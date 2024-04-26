@@ -1,7 +1,7 @@
 import './index.css';
-import { defineComponent, useCssVars, computed, ref, watch, openBlock, createElementBlock, Fragment, renderList, normalizeStyle, createElementVNode, renderSlot, toDisplayString, nextTick, pushScopeId, popScopeId } from "vue";
-const _withScopeId = (n) => (pushScopeId("data-v-af7b0379"), n = n(), popScopeId(), n);
-const _hoisted_1 = ["id", "tabIndex"];
+import { defineComponent, useCssVars, computed, ref, openBlock, createElementBlock, Fragment, renderList, normalizeStyle, createElementVNode, renderSlot, toDisplayString, pushScopeId, popScopeId } from "vue";
+const _withScopeId = (n) => (pushScopeId("data-v-5a9c119d"), n = n(), popScopeId(), n);
+const _hoisted_1 = ["id"];
 const _hoisted_2 = ["onMousedown"];
 const _hoisted_3 = { class: "card-title" };
 const _hoisted_4 = /* @__PURE__ */ _withScopeId(() => /* @__PURE__ */ createElementVNode("div", { class: "empty-text" }, "暂无内容", -1));
@@ -14,12 +14,14 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
     width: { type: Number, default: 500 },
     height: { type: Number, default: 300 },
     columnSpace: { type: Number, default: 20 },
-    rowSpace: { type: Number, default: 20 }
+    rowSpace: { type: Number, default: 20 },
+    duration: { type: Number, default: 200 }
   },
   emits: ["dragStart", "dragStop"],
   setup(__props, { emit: __emit }) {
     useCssVars((_ctx) => ({
-      "22f48cc6": containerHeight.value
+      "57911cb1": containerHeight.value,
+      "f41f9bea": duration.value
     }));
     const emit = __emit;
     const props = __props;
@@ -31,6 +33,9 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
     const containerHeight = computed(() => {
       const num = dataList.value.length;
       return Math.ceil(num / props.columns - 1) * (props.height + props.rowSpace) + props.height + "px";
+    });
+    const duration = computed(() => {
+      return props.duration + "ms";
     });
     function cardPositionTop(index) {
       return Math.floor(index / props.columns) * (props.height + props.rowSpace) + "px";
@@ -49,7 +54,10 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
     let scrollStart;
     let scrollLength = 0;
     let throttleFn;
+    let transitionEnd = true;
     function dragStart(e, id) {
+      if (!transitionEnd)
+        return;
       emit("dragStart", id);
       const card = document.getElementById(id);
       if (!card)
@@ -68,6 +76,7 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
       document.addEventListener("mousemove", dragMove);
       document.addEventListener("mouseup", dragStop);
       document.addEventListener("scroll", scroll);
+      dragDom.addEventListener("transitionend", dragTransitionend);
     }
     function dragMove(e) {
       moveY = domStartY + (e.clientY - mouseStartY);
@@ -77,7 +86,7 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
       throttleFn = setTimeout(() => {
         findCoveredDom(parseInt(dragDom.style.top), parseInt(dragDom.style.left));
         clearTimeout(throttleFn);
-      }, 400);
+      }, props.duration);
     }
     const cardDrag = ref();
     function findCoveredDom(domY, domX) {
@@ -93,77 +102,55 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
             return;
           const newIndex = coveredData.index;
           const bigSmall = dragDomData.index > coveredData.index;
+          let transitionDataList;
           if (bigSmall) {
-            let transitionDataList = dataList.value.filter((item2) => {
+            transitionDataList = dataList.value.filter((item2) => {
               if (item2.index >= coveredData.index && item2.index < dragDomData.index) {
                 item2.index += 1;
                 return item2;
               }
             });
-            dragDomData.index = newIndex;
-            for (const tranItem of transitionDataList) {
-              const el = document.getElementById(tranItem.id);
-              if (el) {
-                el.style.top = cardPositionTop(tranItem.index);
-                el.style.left = cardPositionLeft(tranItem.index);
-              }
-            }
-          }
-          if (!bigSmall) {
-            let transitionDataList = dataList.value.filter((item2) => {
+          } else {
+            transitionDataList = dataList.value.filter((item2) => {
               if (item2.index <= coveredData.index && item2.index > dragDomData.index) {
                 item2.index -= 1;
                 return item2;
               }
             });
-            dragDomData.index = newIndex;
-            for (const tranItem of transitionDataList) {
-              const el = document.getElementById(tranItem.id);
-              if (el) {
-                el.style.top = cardPositionTop(tranItem.index);
-                el.style.left = cardPositionLeft(tranItem.index);
-              }
+          }
+          dragDomData.index = newIndex;
+          for (const tranItem of transitionDataList) {
+            const el = document.getElementById(tranItem.id);
+            if (el) {
+              el.style.top = cardPositionTop(tranItem.index);
+              el.style.left = cardPositionLeft(tranItem.index);
             }
           }
         }
       }
     }
     function dragStop() {
-      emit("dragStop");
+      transitionEnd = false;
+      dataList.value.sort((a, b) => a.index - b.index);
+      emit("dragStop", dataList.value);
       document.removeEventListener("mousemove", dragMove);
       document.removeEventListener("mouseup", dragStop);
       document.removeEventListener("scroll", scroll);
-      dragDom.style.transition = "all 0.4s";
+      dragDom.style.transition = `all ${duration.value}`;
       dragDom.style.top = domStartY + "px";
       dragDom.style.left = domStartX + "px";
       dragDom.style.zIndex = "0";
       dragDom.style.top = cardPositionTop(dragDomData.index);
       dragDom.style.left = cardPositionLeft(dragDomData.index);
-      addCardStyle();
     }
     function scroll() {
       scrollLength = document.documentElement.scrollTop - scrollStart;
       dragDom.style.top = moveY + scrollLength + "px";
     }
-    function addCardStyle() {
-      nextTick(() => {
-        console.log(dataList.value);
-        dataList.value.forEach((item) => {
-          const el = document.getElementById(item.id);
-          if (el) {
-            el.style.top = cardPositionTop(item.index);
-            el.style.left = cardPositionLeft(item.index);
-          }
-        });
-      });
+    function dragTransitionend() {
+      transitionEnd = true;
+      this.removeEventListener("transitionend", dragTransitionend);
     }
-    watch(
-      dataList,
-      () => {
-        addCardStyle();
-      },
-      { immediate: true }
-    );
     return (_ctx, _cache) => {
       return openBlock(), createElementBlock("div", {
         class: "card-drag-sort",
@@ -175,7 +162,6 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
             class: "card-wrap",
             key: item.id,
             id: item.id,
-            tabIndex: item.index,
             style: normalizeStyle({
               width: `${__props.width}px`,
               height: `${__props.height}px`,
@@ -187,11 +173,11 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
               class: "card-header",
               onMousedown: ($event) => dragStart($event, item.id)
             }, [
-              renderSlot(_ctx.$slots, "header", { item }, () => [
+              renderSlot(_ctx.$slots, "header", { card: item }, () => [
                 createElementVNode("div", _hoisted_3, toDisplayString(item.title || "无标题"), 1)
               ], true)
             ], 40, _hoisted_2),
-            renderSlot(_ctx.$slots, "content", { item }, () => [
+            renderSlot(_ctx.$slots, "content", { card: item }, () => [
               _hoisted_4
             ], true)
           ], 12, _hoisted_1);
@@ -207,7 +193,7 @@ const _export_sfc = (sfc, props) => {
   }
   return target;
 };
-const CardDragSort = /* @__PURE__ */ _export_sfc(_sfc_main, [["__scopeId", "data-v-af7b0379"]]);
+const CardDragSort = /* @__PURE__ */ _export_sfc(_sfc_main, [["__scopeId", "data-v-5a9c119d"]]);
 const components = [CardDragSort];
 const install = (app) => {
   components.forEach((component) => {

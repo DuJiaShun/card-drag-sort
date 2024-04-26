@@ -26,7 +26,7 @@
 
 <script lang="ts" setup>
 defineOptions({ name: 'CardDragSort' })
-import { PropType, computed, ref, nextTick, watch } from 'vue'
+import { PropType, computed, ref } from 'vue'
 
 const emit = defineEmits(['dragStart', 'dragStop'])
 
@@ -220,7 +220,6 @@ function dragStop() {
   dragDom.style.left = domStartX + 'px'
   dragDom.style.zIndex = '0'
 
-
   dragDom.style.top = cardPositionTop(dragDomData.index)
   dragDom.style.left = cardPositionLeft(dragDomData.index)
 }
@@ -233,7 +232,7 @@ function scroll() {
 }
 
 // 过渡效果
-function dragTransitionend() {
+function dragTransitionend(this:HTMLElement) {
   transitionEnd = true
   // 移除监听事件
   this.removeEventListener('transitionend', dragTransitionend)
