@@ -5,7 +5,6 @@
       v-for="item in dataList"
       :key="item.id"
       :id="item.id"
-      :tabIndex="item.index"
       :style="{
         width: `${width}px`,
         height: `${height}px`,
@@ -14,11 +13,11 @@
       }"
     >
       <div class="card-header" @mousedown="dragStart($event, item.id)">
-        <slot name="header" :item="item">
+        <slot name="header" :card="item">
           <div class="card-title">{{ item.title || '无标题' }}</div>
         </slot>
       </div>
-      <slot name="content" :item="item">
+      <slot name="content" :card="item">
         <div class="empty-text">暂无内容</div>
       </slot>
     </div>
@@ -34,10 +33,9 @@ const emit = defineEmits(['dragStart', 'dragStop'])
 interface dataType {
   id: string
   title?: string
-  index?: number
 }
 
-interface dataComputedType {
+interface dataListType {
   id: string
   title?: string
   index: number
@@ -49,10 +47,11 @@ const props = defineProps({
   width: { type: Number, default: 500 },
   height: { type: Number, default: 300 },
   columnSpace: { type: Number, default: 20 },
-  rowSpace: { type: Number, default: 20 }
+  rowSpace: { type: Number, default: 20 },
+  duration: { type: Number, default: 200 }
 })
 
-const dataList = computed<dataComputedType[]>(() => {
+const dataList = computed<dataListType[]>(() => {
   return props.data.map((item, index) => {
     return { index, ...item }
   })
@@ -62,6 +61,10 @@ const dataList = computed<dataComputedType[]>(() => {
 const containerHeight = computed(() => {
   const num = dataList.value.length
   return Math.ceil(num / props.columns - 1) * (props.height + props.rowSpace) + props.height + 'px'
+})
+
+const duration = computed(() => {
+  return props.duration + 'ms'
 })
 
 // 每个card坐标
@@ -75,7 +78,7 @@ function cardPositionLeft(index: number) {
 // 拖动的dom元素
 let dragDom: HTMLElement
 // 拖动的dom元素对应的数据
-let dragDomData: dataComputedType
+let dragDomData: dataListType
 // dom元素起始点
 let domStartY: number
 let domStartX: number
@@ -91,9 +94,14 @@ let scrollStart: number
 let scrollLength: number = 0
 // 节流
 let throttleFn: NodeJS.Timeout
+// 过渡效果是否完成
+let transitionEnd: boolean = true
 
 // 鼠标按下拖动开始
 function dragStart(e: MouseEvent, id: string) {
+  // 等上一个过渡效果完成之后才能继续
+  if (!transitionEnd) return
+
   emit('dragStart', id)
   // 获取拖动的dom元素
   const card = document.getElementById(id)
@@ -102,7 +110,7 @@ function dragStart(e: MouseEvent, id: string) {
   // 获取拖动dom元素的数据
   dragDomData = dataList.value.find(item => {
     return item.id === id
-  }) as dataComputedType
+  }) as dataListType
   // 记录dom元素起始点
   domStartY = parseInt(dragDom.style.top)
   domStartX = parseInt(dragDom.style.left)
@@ -120,6 +128,8 @@ function dragStart(e: MouseEvent, id: string) {
   document.addEventListener('mousemove', dragMove)
   document.addEventListener('mouseup', dragStop)
   document.addEventListener('scroll', scroll)
+  // 监听过渡效果
+  dragDom.addEventListener('transitionend', dragTransitionend)
 }
 
 // 鼠标拖动
@@ -136,7 +146,7 @@ function dragMove(e: MouseEvent) {
   throttleFn = setTimeout(() => {
     findCoveredDom(parseInt(dragDom.style.top), parseInt(dragDom.style.left))
     clearTimeout(throttleFn)
-  }, 400)
+  }, props.duration)
 }
 
 // 父元素
@@ -163,37 +173,29 @@ function findCoveredDom(domY: number, domX: number) {
       // 比较两个元素顺序的大小
       const bigSmall = dragDomData.index > coveredData.index
       // 如果拖动的元素比覆盖的元素大 则往后移一位
+      let transitionDataList: dataListType[]
       if (bigSmall) {
-        let transitionDataList = dataList.value.filter(item => {
+        transitionDataList = dataList.value.filter(item => {
           if (item.index >= coveredData.index && item.index < dragDomData.index) {
             item.index += 1
             return item
           }
         })
-        dragDomData.index = newIndex
-        for (const tranItem of transitionDataList) {
-          const el = document.getElementById(tranItem.id)
-          if (el) {
-            el.style.top = cardPositionTop(tranItem.index)
-            el.style.left = cardPositionLeft(tranItem.index)
-          }
-        }
-      }
-      // 如果拖动的元素比覆盖的元素小 则往前移一位
-      if (!bigSmall) {
-        let transitionDataList = dataList.value.filter(item => {
+      } else {
+        // 如果拖动的元素比覆盖的元素小 则往前移一位
+        transitionDataList = dataList.value.filter(item => {
           if (item.index <= coveredData.index && item.index > dragDomData.index) {
             item.index -= 1
             return item
           }
         })
-        dragDomData.index = newIndex
-        for (const tranItem of transitionDataList) {
-          const el = document.getElementById(tranItem.id)
-          if (el) {
-            el.style.top = cardPositionTop(tranItem.index)
-            el.style.left = cardPositionLeft(tranItem.index)
-          }
+      }
+      dragDomData.index = newIndex
+      for (const tranItem of transitionDataList) {
+        const el = document.getElementById(tranItem.id)
+        if (el) {
+          el.style.top = cardPositionTop(tranItem.index)
+          el.style.left = cardPositionLeft(tranItem.index)
         }
       }
     }
@@ -202,21 +204,25 @@ function findCoveredDom(domY: number, domX: number) {
 
 // 鼠标抬起拖动结束
 function dragStop() {
-  emit('dragStop')
+  transitionEnd = false
+  // 排序
+  dataList.value.sort((a, b) => a.index - b.index)
+  emit('dragStop', dataList.value)
+
   // 移除所有鼠标事件
   document.removeEventListener('mousemove', dragMove)
   document.removeEventListener('mouseup', dragStop)
   document.removeEventListener('scroll', scroll)
 
   // 添加过渡动画
-  dragDom.style.transition = 'all 0.4s'
+  dragDom.style.transition = `all ${duration.value}`
   dragDom.style.top = domStartY + 'px'
   dragDom.style.left = domStartX + 'px'
   dragDom.style.zIndex = '0'
 
+
   dragDom.style.top = cardPositionTop(dragDomData.index)
   dragDom.style.left = cardPositionLeft(dragDomData.index)
-  addCardStyle()
 }
 
 // 监听滚轮
@@ -226,25 +232,12 @@ function scroll() {
   dragDom.style.top = moveY + scrollLength + 'px'
 }
 
-function addCardStyle() {
-  nextTick(() => {
-    console.log(dataList.value)
-    dataList.value.forEach(item => {
-      const el = document.getElementById(item.id)
-      if (el) {
-        el.style.top = cardPositionTop(item.index)
-        el.style.left = cardPositionLeft(item.index)
-      }
-    })
-  })
+// 过渡效果
+function dragTransitionend() {
+  transitionEnd = true
+  // 移除监听事件
+  this.removeEventListener('transitionend', dragTransitionend)
 }
-watch(
-  dataList,
-  () => {
-    addCardStyle()
-  },
-  { immediate: true }
-)
 </script>
 
 <style lang="scss" scoped>
@@ -257,12 +250,12 @@ watch(
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    border-radius: 5px;
+    border-radius: 6px;
     box-shadow: 0 0 8px #ccc;
-    transition: all 0.4s;
+    transition: all v-bind(duration);
+    user-select: none;
     .card-header {
       height: 50px;
-      user-select: none;
       cursor: move;
       border-bottom: 1px solid #e0e0e0;
     }

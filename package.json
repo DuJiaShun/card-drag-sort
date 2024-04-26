@@ -2,7 +2,7 @@
   "name": "card-drag-sort",
   "private": false,
   "version": "0.0.5",
-  "author": "dujiashun",
+  "author": "https://github.com/DuJiaShun/card-drag-sort",
   "description": "Vue3卡片拖拽排序组件",
   "keywords": [
     "vue",
@@ -13,7 +13,7 @@
     "ui"
   ],
   "type": "module",
-  "license": "ISC",
+  "license": "MIT",
   "files": [
     "dist"
   ],
