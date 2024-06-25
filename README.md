@@ -66,4 +66,4 @@ import { CardDragSort } from 'card-drag-sort'
 | 事件名     | 描述                                        | 类型     |
 | ---------- | ------------------------------------------- | -------- |
 | drag-start | 点击卡片顶部标题栏时触发，参数为卡片唯一 id | Function |
-| drag-stop  | 在松开鼠标时触发，参数为最新卡片顺序        | Function |
+| drag-end  | 在松开鼠标时触发，参数为最新卡片顺序        | Function |
